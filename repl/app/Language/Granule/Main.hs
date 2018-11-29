@@ -63,7 +63,7 @@ instance MonadException m => MonadException (Ex.ExceptT e m) where
                   in fmap Ex.runExceptT $ f run'
 
 replEval :: (?globals :: Globals) => Int -> AST () () -> IO (Maybe RValue)
-replEval val (AST dataDecls defs) = do
+replEval val (AST dataDecls defs ifaces insts) = do
     bindings <- evalDefs builtIns (map toRuntimeRep defs)
     case lookup (mkId (" repl"<>(show val))) bindings of
       Nothing -> return Nothing
@@ -107,7 +107,8 @@ readToQueue pth = do
             checked <-  liftIO' $ check ast
             case checked of
                 Just _ -> do
-                    let (AST dd def) = ast
+                    -- TODO: actually get decent interface/instance information to use here
+                    let (AST dd def _ _) = ast
                     forM def $ \idef -> loadInQueue idef
                     (fvg,rp,adt,f,m) <- get
                     put (fvg,rp,(dd<>adt),f,m)
@@ -358,7 +359,8 @@ handleCMD s =
             _ -> liftIO $ putStrLn xtx
         ast -> do
           -- TODO: use the type that comes out of the checker to return the type
-          checked <- liftIO' $ check (AST adt ast)
+          -- TODO: actually get decent interface/instance information to use here
+          checked <- liftIO' $ check (AST adt ast [] [])
           case checked of
             Just _ -> liftIO $ putStrLn (printType trm m)
             Nothing -> Ex.throwError (TypeCheckError trm f)
@@ -384,10 +386,12 @@ handleCMD s =
                         typer <- synTypeBuilder exp ast adt
                         let ndef = buildDef fvg (buildTypeScheme typer) exp
                         put ((fvg+1),rp,adt,fp,m)
-                        checked <- liftIO' $ check (AST adt (ast<>(ndef:[])))
+                        -- TODO: actually get decent interface/instance information to use here
+                        checked <- liftIO' $ check (AST adt (ast<>(ndef:[])) [] [])
                         case checked of
                             Just _ -> do
-                                result <- liftIO' $ try $ replEval fvg (AST adt (ast<>(ndef:[])))
+                                -- TODO: actually get decent interface/instance information to use here
+                                result <- liftIO' $ try $ replEval fvg (AST adt (ast<>(ndef:[])) [] [])
                                 case result of
                                     Left e -> Ex.throwError (EvalError e)
                                     Right Nothing -> liftIO $ print "if here fix"
