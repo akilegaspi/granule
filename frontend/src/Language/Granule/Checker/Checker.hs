@@ -139,19 +139,8 @@ checkDataCon tName kind tyVars d@DataConstrNonIndexed{}
   = checkDataCon tName kind tyVars
     $ nonIndexedToIndexedDataConstr tName tyVars d
 
-notInScope :: (?globals :: Globals) => String -> Span -> Id -> MaybeT Checker ()
-notInScope desc sp name = halt $
-  UnboundVariableError (Just sp) $ concat [desc, " `", pretty name, "` is not in scope."]
-
--- | Verify that a name exists in the context, fail if it
--- | doesn't.
-checkExists :: (?globals :: Globals) => (CheckerState -> Ctxt a, String) -> Span -> Id -> MaybeT Checker ()
-checkExists (ctxtf, descr) sp name = do
-  exists <- isJust . lookup name <$> gets ctxtf
-  when (not exists) $ notInScope descr sp name
-
 checkIFaceExists :: (?globals :: Globals) => Span -> Id -> MaybeT Checker ()
-checkIFaceExists = checkExists (ifaceContext, "Interface")
+checkIFaceExists s = void . requireInScope (ifaceContext, "Interface") s
 
 checkConstrIFaceExists :: (?globals :: Globals) => Span -> IConstr -> MaybeT Checker ()
 checkConstrIFaceExists sp (IConstr (name,_)) =
