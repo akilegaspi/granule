@@ -82,7 +82,7 @@ meetConsumption NotFull _ = NotFull
 meetConsumption _ NotFull = NotFull
 meetConsumption Full Full = Full
 
-type IFaceCtxt = (Kind, [Id])
+type IFaceCtxt = ((Id, Kind), [Id])
 
 data CheckerState = CS
             { -- Fresh variable id state
@@ -156,8 +156,11 @@ lookupContext ctxtf name = fmap (lookup name . ctxtf) get
 getInterface :: Id -> MaybeT Checker (Maybe IFaceCtxt)
 getInterface = lookupContext ifaceContext
 
+getInterfaceParameter :: Id -> MaybeT Checker (Maybe Id)
+getInterfaceParameter = fmap (fmap $ fst . fst) . getInterface
+
 getInterfaceKind :: Id -> MaybeT Checker (Maybe Kind)
-getInterfaceKind = fmap (fmap fst) . getInterface
+getInterfaceKind = fmap (fmap $ snd . fst) . getInterface
 
 getInterfaceMembers :: Id -> MaybeT Checker (Maybe [Id])
 getInterfaceMembers = fmap (fmap snd) . getInterface
@@ -192,10 +195,10 @@ registerTyCon sp name kind card = do
   checkDuplicateTyConScope sp name
   modify' $ \st -> st { typeConstructors = (name, (kind, card)) : typeConstructors st }
 
-registerInterface :: (?globals :: Globals) => Span -> Id -> Kind -> [Id] -> MaybeT Checker ()
-registerInterface sp name kind ifnames = do
+registerInterface :: (?globals :: Globals) => Span -> Id -> Id -> Kind -> [Id] -> MaybeT Checker ()
+registerInterface sp name pname kind ifnames = do
   checkDuplicateTyConScope sp name
-  modify' $ \st -> st { ifaceContext = (name, (kind, ifnames)) : ifaceContext st }
+  modify' $ \st -> st { ifaceContext = (name, ((pname, kind), ifnames)) : ifaceContext st }
 
 {- | Useful if a checking procedure is needed which
      may get discarded within a wider checking, e.g., for
