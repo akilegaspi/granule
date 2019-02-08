@@ -501,12 +501,6 @@ freshPolymorphicInstance quantifier isDataConstructor (Forall s kinds constr ty)
       where conv (_, Left a) = Just a
             conv (_, Right _) = Nothing
 
-instance Substitutable IConstr where
-  substitute ctxt (IConstr ty) =
-    substitute ctxt ty >>= pure . IConstr
-
-  unify (IConstr t1) (IConstr t2) = unify t1 t2
-
 instance Substitutable TypeScheme where
   substitute ctxt (Forall s binds constrs ty) = do
     constrs' <- mapM (substitute ctxt) constrs
