@@ -140,7 +140,7 @@ ctxtFromTypedPattern _ ty p@(PConstr s _ dataC ps) cons = do
       halt $ UnboundVariableError (Just s) $
              "Data constructor `" <> pretty dataC <> "`" <?> show (dataConstructors st)
     Just tySch -> do
-      (dataConstructorTypeFresh, freshTyVars, []) <-
+      (dataConstructorTypeFresh, freshTyVars, ([], [])) <-
           freshPolymorphicInstance BoundQ True tySch
       -- TODO: don't allow constraints in data constructors yet
 

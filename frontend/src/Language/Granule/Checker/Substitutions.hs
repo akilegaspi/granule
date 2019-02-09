@@ -331,8 +331,7 @@ instance Substitutable Kind where
 
   substitute subst KType = return KType
   substitute subst KCoeffect = return KCoeffect
-  substitute subst KPredicate = return KPredicate
-  substitute subst KConstraint = return KConstraint
+  substitute subst c@(KConstraint _) = return c
   substitute subst (KFun c1 c2) = do
     c1 <- substitute subst c1
     c2 <- substitute subst c2
@@ -462,7 +461,7 @@ freshPolymorphicInstance :: (?globals :: Globals)
   => Quantifier   -- Variety of quantifier to resolve universals into (InstanceQ or BoundQ)
   -> Bool         -- Flag on whether this is a data constructor-- if true, then be careful with existentials
   -> TypeScheme   -- Type scheme to freshen
-  -> MaybeT Checker (Type, [Id], [Type])
+  -> MaybeT Checker (Type, [Id], ([Type], [Type]))
     -- Returns the type (with skolems), a list of skolem variables, and a list of constraints
 freshPolymorphicInstance quantifier isDataConstructor (Forall s kinds constr ty) = do
     -- Universal becomes an existential (via freshCoeffeVar)
@@ -472,9 +471,12 @@ freshPolymorphicInstance quantifier isDataConstructor (Forall s kinds constr ty)
 
     let subst = map (\(v, var) -> (v, SubstT $ TyVar var)) $ elideEither renameMap
     constr' <- mapM (substitute subst) constr
+    predicateConstraints <- filterM isPredicateConstraint constr'
+    interfaceConstraints <- filterM isInterfaceConstraint constr'
 
     -- Return the type and all skolem variables
-    return (ty, justLefts renameMap, constr')
+    return (ty, justLefts renameMap,
+             (predicateConstraints, interfaceConstraints))
 
   where
     -- Freshen variables, create skolem variables
@@ -500,6 +502,8 @@ freshPolymorphicInstance quantifier isDataConstructor (Forall s kinds constr ty)
     justLefts = mapMaybe conv
       where conv (_, Left a) = Just a
             conv (_, Right _) = Nothing
+    isPredicateConstraint = fmap (==KConstraint Predicate) . inferKindOfType s
+    isInterfaceConstraint = fmap (==KConstraint Interface) . inferKindOfType s
 
 instance Substitutable TypeScheme where
   substitute ctxt (Forall s binds constrs ty) = do
